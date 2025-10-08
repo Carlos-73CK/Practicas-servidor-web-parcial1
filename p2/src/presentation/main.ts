@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { UserService } from '../application/UserService';
 import { InMemoryUserRepository } from '../infrastructure/InMemoryUserRepository';
-import { User, UserRole, CreateUserData } from '../domain/entities/User';
+import { User, UserStatus, CreateUserData } from '../domain/entities/User';
 
 /**
  * Archivo principal de pruebas para demostrar todos los paradigmas asíncronos
@@ -61,12 +61,12 @@ class Main {
       console.log(chalk.cyan(`📈 Total de usuarios registrados: ${users.length}`));
       
       const stats = await this.userService.getUserStatistics();
-      console.log(chalk.cyan(`👥 Usuarios activos: ${stats.active}`));
-      console.log(chalk.cyan(`💤 Usuarios inactivos: ${stats.inactive}`));
+      console.log(chalk.cyan(`👥 Usuarios activos: ${stats.activos}`));
+      console.log(chalk.cyan(`💤 Usuarios inactivos: ${stats.inactivos}`));
       
-      console.log(chalk.cyan('\n📋 Distribución por roles:'));
-      Object.entries(stats.byRole).forEach(([role, count]) => {
-        console.log(chalk.white(`  • ${role}: ${count} usuarios`));
+      console.log(chalk.cyan('\n📋 Distribución por estado:'));
+      Object.entries(stats.porEstado).forEach(([estado, count]) => {
+        console.log(chalk.white(`  • ${estado}: ${count} usuarios`));
       });
 
       console.log(chalk.green('\n✓ Datos iniciales mostrados correctamente\n'));
@@ -85,25 +85,22 @@ class Main {
 
     const newUsers: CreateUserData[] = [
       {
-        email: 'nuevo.usuario1@test.com',
-        firstName: 'Roberto',
-        lastName: 'Mendoza',
-        age: 27,
-        role: UserRole.ENTREPRENEUR
+        nombres: 'Roberto Mendoza Silva',
+        email: 'roberto.mendoza@test.com',
+        contraseña: 'roberto123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'nueva.usuaria2@test.com',
-        firstName: 'Valentina',
-        lastName: 'Jiménez',
-        age: 32,
-        role: UserRole.MENTOR
+        nombres: 'Valentina Jiménez Pérez',
+        email: 'valentina.jimenez@test.com',
+        contraseña: 'valentina123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'inversor.nuevo@test.com',
-        firstName: 'Alejandro',
-        lastName: 'Ramírez',
-        age: 45,
-        role: UserRole.INVESTOR
+        nombres: 'Alejandro Ramírez Torres',
+        email: 'alejandro.ramirez@test.com',
+        contraseña: 'alejandro123456',
+        estado: UserStatus.ACTIVO
       }
     ];
 
@@ -114,11 +111,10 @@ class Main {
     // Intentar crear usuario con email duplicado para probar manejo de errores
     console.log(chalk.blue('\n🧪 Probando creación con email duplicado...'));
     await this.createUserWithCallback({
-      email: 'admin@emprendimiento.com', // Email que ya existe
-      firstName: 'Test',
-      lastName: 'Duplicado',
-      age: 30,
-      role: UserRole.USER
+      nombres: 'Test Duplicado',
+      email: 'maria.gonzalez@sistema.com', // Email que ya existe
+      contraseña: 'test123456',
+      estado: UserStatus.ACTIVO
     });
 
     console.log(chalk.green('\n✓ Pruebas de CREATE con callbacks completadas\n'));
@@ -129,17 +125,17 @@ class Main {
    */
   private createUserWithCallback(userData: CreateUserData): Promise<void> {
     return new Promise((resolve) => {
-      console.log(chalk.blue(`📝 Creando usuario: ${userData.firstName} ${userData.lastName}...`));
+      console.log(chalk.blue(`📝 Creando usuario: ${userData.nombres}...`));
       
       this.userService.createUser(userData, (error, result) => {
         if (error) {
           console.log(chalk.red(`❌ Error: ${error.message}`));
         } else if (result) {
           console.log(chalk.green(`✅ Usuario creado exitosamente:`));
-          console.log(chalk.white(`   ID: ${result.id}`));
-          console.log(chalk.white(`   Nombre: ${result.getFullName()}`));
+          console.log(chalk.white(`   ID: ${result.id_usuario}`));
+          console.log(chalk.white(`   Nombres: ${result.getNombres()}`));
           console.log(chalk.white(`   Email: ${result.email}`));
-          console.log(chalk.white(`   Rol: ${result.role}`));
+          console.log(chalk.white(`   Estado: ${result.estado}`));
         }
         resolve();
       });
@@ -159,35 +155,35 @@ class Main {
       const allUsers = await this.userService.getAllUsers();
       console.log(chalk.green(`✅ Se encontraron ${allUsers.length} usuarios`));
 
-      // Mostrar algunos usuarios
+      // Mostrar algunos usuarios (versión segura sin contraseñas)
       console.log(chalk.cyan('\n👥 Primeros 5 usuarios:'));
       allUsers.slice(0, 5).forEach((user, index) => {
-        console.log(chalk.white(`  ${index + 1}. ${user.getFullName()} (${user.email}) - ${user.role}`));
+        const safeData = user.toSafeJSON();
+        console.log(chalk.white(`  ${index + 1}. ${safeData.nombres} (${safeData.email}) - ${safeData.estado}`));
       });
 
       // Buscar usuario por ID
       if (allUsers.length > 0) {
         const firstUser = allUsers[0]!;
-        console.log(chalk.blue(`\n🔎 Buscando usuario por ID: ${firstUser.id}...`));
-        const foundUser = await this.userService.getUserById(firstUser.id);
+        console.log(chalk.blue(`\n🔎 Buscando usuario por ID: ${firstUser.id_usuario}...`));
+        const foundUser = await this.userService.getUserById(firstUser.id_usuario);
         
         if (foundUser) {
           console.log(chalk.green('✅ Usuario encontrado:'));
-          console.log(chalk.white(`   Nombre: ${foundUser.getFullName()}`));
+          console.log(chalk.white(`   Nombres: ${foundUser.getNombres()}`));
           console.log(chalk.white(`   Email: ${foundUser.email}`));
-          console.log(chalk.white(`   Estado: ${foundUser.isActive ? 'Activo' : 'Inactivo'}`));
+          console.log(chalk.white(`   Estado: ${foundUser.estado}`));
         }
       }
 
-      // Buscar usuarios por rol
-      console.log(chalk.blue('\n👨‍💼 Buscando emprendedores...'));
-      const entrepreneurs = await this.userService.getUsersByRole(UserRole.ENTREPRENEUR);
-      console.log(chalk.green(`✅ Se encontraron ${entrepreneurs.length} emprendedores`));
-
-      // Buscar usuarios activos
-      console.log(chalk.blue('\n🟢 Buscando usuarios activos...'));
+      // Buscar usuarios por estado
+      console.log(chalk.blue('\n� Buscando usuarios activos...'));
       const activeUsers = await this.userService.getActiveUsers();
       console.log(chalk.green(`✅ Usuarios activos: ${activeUsers.length}`));
+
+      console.log(chalk.blue('\n� Buscando usuarios inactivos...'));
+      const inactiveUsers = await this.userService.getUsersByEstado(UserStatus.INACTIVO);
+      console.log(chalk.green(`✅ Usuarios inactivos: ${inactiveUsers.length}`));
 
       // Probar búsqueda por email
       if (allUsers.length > 0) {
@@ -230,30 +226,30 @@ class Main {
         return;
       }
 
-      const userToUpdate = users.find(u => u.role === UserRole.ENTREPRENEUR);
+      const userToUpdate = users.find(u => u.isActive());
       if (!userToUpdate) {
-        console.log(chalk.yellow('⚠️  No se encontró emprendedor para actualizar'));
+        console.log(chalk.yellow('⚠️  No se encontró usuario activo para actualizar'));
         return;
       }
 
-      console.log(chalk.blue(`🔄 Actualizando usuario: ${userToUpdate.getFullName()}...`));
-      console.log(chalk.white(`   Datos actuales: ${userToUpdate.email}, Edad: ${userToUpdate.age}`));
+      console.log(chalk.blue(`🔄 Actualizando usuario: ${userToUpdate.getNombres()}...`));
+      console.log(chalk.white(`   Datos actuales: ${userToUpdate.email}, Estado: ${userToUpdate.estado}`));
 
       // Actualizar usando promises
       const updates = {
-        age: userToUpdate.age + 1,
-        firstName: userToUpdate.firstName + ' (Actualizado)'
+        nombres: userToUpdate.nombres + ' (Actualizado)',
+        estado: UserStatus.ACTIVO
       };
 
-      await this.updateUserWithPromises(userToUpdate.id, updates);
+      await this.updateUserWithPromises(userToUpdate.id_usuario, updates);
 
       // Probar actualización con ID inexistente
       console.log(chalk.blue('\n🧪 Probando actualización con ID inexistente...'));
-      await this.updateUserWithPromises('id-inexistente', { age: 25 });
+      await this.updateUserWithPromises('id-inexistente', { nombres: 'Test' });
 
       // Probar actualización sin datos
       console.log(chalk.blue('\n🧪 Probando actualización sin datos...'));
-      await this.updateUserWithPromises(userToUpdate.id, {});
+      await this.updateUserWithPromises(userToUpdate.id_usuario, {});
 
       console.log(chalk.green('\n✓ Pruebas de UPDATE con promises completadas\n'));
       
@@ -271,10 +267,9 @@ class Main {
         .then(updatedUser => {
           if (updatedUser) {
             console.log(chalk.green('✅ Usuario actualizado exitosamente:'));
-            console.log(chalk.white(`   ID: ${updatedUser.id}`));
-            console.log(chalk.white(`   Nombre: ${updatedUser.getFullName()}`));
-            console.log(chalk.white(`   Edad: ${updatedUser.age}`));
-            console.log(chalk.white(`   Última actualización: ${updatedUser.updatedAt.toLocaleString()}`));
+            console.log(chalk.white(`   ID: ${updatedUser.id_usuario}`));
+            console.log(chalk.white(`   Nombres: ${updatedUser.getNombres()}`));
+            console.log(chalk.white(`   Estado: ${updatedUser.estado}`));
           }
           resolve();
         })
@@ -293,22 +288,21 @@ class Main {
     console.log(chalk.yellow('------------------------------------'));
 
     try {
-      // Obtener usuarios para eliminar (evitar administradores)
+      // Obtener usuarios para eliminar
       const users = await this.userService.getAllUsers();
-      const nonAdminUsers = users.filter(user => !user.isAdmin());
-
-      if (nonAdminUsers.length === 0) {
-        console.log(chalk.yellow('⚠️  No hay usuarios no-admin disponibles para eliminar'));
+      
+      if (users.length === 0) {
+        console.log(chalk.yellow('⚠️  No hay usuarios disponibles para eliminar'));
         return;
       }
 
-      // Eliminar algunos usuarios
-      const usersToDelete = nonAdminUsers.slice(-2); // Los últimos 2 usuarios
+      // Eliminar algunos usuarios (los últimos creados)
+      const usersToDelete = users.slice(-2); // Los últimos 2 usuarios
 
       for (const user of usersToDelete) {
-        console.log(chalk.blue(`🗑️  Eliminando usuario: ${user.getFullName()}...`));
+        console.log(chalk.blue(`🗑️  Eliminando usuario: ${user.getNombres()}...`));
         
-        const deleted = await this.userService.deleteUser(user.id);
+        const deleted = await this.userService.deleteUser(user.id_usuario);
         
         if (deleted) {
           console.log(chalk.green(`✅ Usuario eliminado exitosamente`));
@@ -323,17 +317,6 @@ class Main {
       
       if (!deletedNonExistent) {
         console.log(chalk.yellow('⚠️  Usuario no encontrado para eliminar (comportamiento esperado)'));
-      }
-
-      // Probar eliminar administrador (debe fallar)
-      const adminUser = users.find(user => user.isAdmin());
-      if (adminUser) {
-        console.log(chalk.blue('\n🧪 Probando eliminación de administrador (debe fallar)...'));
-        try {
-          await this.userService.deleteUser(adminUser.id);
-        } catch (error) {
-          console.log(chalk.yellow(`⚠️  Error esperado: ${(error as Error).message}`));
-        }
       }
 
       console.log(chalk.green('\n✓ Pruebas de DELETE con async/await completadas\n'));
@@ -355,13 +338,13 @@ class Main {
       
       console.log(chalk.cyan('📈 Resumen final:'));
       console.log(chalk.white(`   • Total de usuarios: ${stats.total}`));
-      console.log(chalk.white(`   • Usuarios activos: ${stats.active}`));
-      console.log(chalk.white(`   • Usuarios inactivos: ${stats.inactive}`));
+      console.log(chalk.white(`   • Usuarios activos: ${stats.activos}`));
+      console.log(chalk.white(`   • Usuarios inactivos: ${stats.inactivos}`));
       
-      console.log(chalk.cyan('\n👥 Distribución por roles:'));
-      Object.entries(stats.byRole).forEach(([role, count]) => {
-        const emoji = this.getRoleEmoji(role);
-        console.log(chalk.white(`   ${emoji} ${role}: ${count} usuarios`));
+      console.log(chalk.cyan('\n👥 Distribución por estado:'));
+      Object.entries(stats.porEstado).forEach(([estado, count]) => {
+        const emoji = this.getEstadoEmoji(estado);
+        console.log(chalk.white(`   ${emoji} ${estado}: ${count} usuarios`));
       });
 
       // Mostrar algunos usuarios finales
@@ -369,8 +352,8 @@ class Main {
       console.log(chalk.cyan(`\n📋 Usuarios finales (${finalUsers.length} total):`));
       
       finalUsers.slice(0, 3).forEach((user, index) => {
-        const statusIcon = user.isActive ? '🟢' : '🔴';
-        console.log(chalk.white(`   ${index + 1}. ${statusIcon} ${user.getFullName()} - ${user.role}`));
+        const statusIcon = user.isActive() ? '🟢' : '🔴';
+        console.log(chalk.white(`   ${index + 1}. ${statusIcon} ${user.getNombres()} - ${user.estado}`));
       });
 
       if (finalUsers.length > 3) {
@@ -385,17 +368,14 @@ class Main {
   }
 
   /**
-   * Obtiene emoji para cada rol
+   * Obtiene emoji para cada estado
    */
-  private getRoleEmoji(role: string): string {
+  private getEstadoEmoji(estado: string): string {
     const emojiMap: Record<string, string> = {
-      [UserRole.ADMIN]: '👑',
-      [UserRole.ENTREPRENEUR]: '🚀',
-      [UserRole.INVESTOR]: '💰',
-      [UserRole.MENTOR]: '🎓',
-      [UserRole.USER]: '👤'
+      [UserStatus.ACTIVO]: '�',
+      [UserStatus.INACTIVO]: '�'
     };
-    return emojiMap[role] || '👤';
+    return emojiMap[estado] || '❓';
   }
 }
 

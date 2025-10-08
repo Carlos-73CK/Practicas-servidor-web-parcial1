@@ -7,6 +7,6 @@ import { User, CreateUserData } from '../entities/User';
  */
 export interface IUserRepository extends IRepository<User, CreateUserData> {
   findByEmail(email: string): Promise<User | null>;
-  findByRole(role: string): Promise<User[]>;
+  findByEstado(estado: string): Promise<User[]>;
   findActiveUsers(): Promise<User[]>;
 }

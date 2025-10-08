@@ -1,0 +1,50 @@
+############################
+# Dependencias / builds
+node_modules/
+dist/
+*.tsbuildinfo
+
+############################
+# Base de datos SQLite (archivo principal y archivos auxiliares WAL/SHM)
+database.sqlite
+database.sqlite-journal
+database.sqlite-wal
+database.sqlite-shm
+
+############################
+# Logs y diagnósticos
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+############################
+# Variables de entorno (si se agregan luego)
+.env
+.env.local
+.env.*.local
+
+############################
+# SO / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+/.idea/
+/.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+############################
+# Cobertura de tests (si se añade Jest más adelante)
+coverage/
+
+############################
+# Artefactos temporales de herramientas
+tmp/
+temp/
+
+############################
+# NOTA: No ignorar lock files (package-lock.json) para asegurar builds reproducibles.

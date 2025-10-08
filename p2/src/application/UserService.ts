@@ -1,5 +1,5 @@
 import { IUserRepository } from '../domain/interfaces/IUserRepository';
-import { User, CreateUserData, UserRole } from '../domain/entities/User';
+import { User, CreateUserData, UserStatus } from '../domain/entities/User';
 import { CreateCallback } from '../domain/interfaces/IRepository';
 
 /**
@@ -78,13 +78,13 @@ export class UserService {
   }
 
   /**
-   * READ - Obtener usuarios por rol
+   * READ - Obtener usuarios por estado
    */
-  async getUsersByRole(role: UserRole): Promise<User[]> {
+  async getUsersByEstado(estado: UserStatus): Promise<User[]> {
     try {
-      return await this.userRepository.findByRole(role);
+      return await this.userRepository.findByEstado(estado);
     } catch (error) {
-      throw new Error(`Error en servicio al obtener usuarios por rol: ${(error as Error).message}`);
+      throw new Error(`Error en servicio al obtener usuarios por estado: ${(error as Error).message}`);
     }
   }
 
@@ -139,11 +139,6 @@ export class UserService {
         return false; // Usuario no encontrado
       }
 
-      // Validación de negocio: no eliminar administradores
-      if (existingUser.isAdmin()) {
-        throw new Error('No se puede eliminar usuarios administradores');
-      }
-
       return await this.userRepository.delete(id);
       
     } catch (error) {
@@ -179,21 +174,17 @@ export class UserService {
       throw new Error('Email es requerido');
     }
 
-    if (!userData.firstName || userData.firstName.trim() === '') {
-      throw new Error('Nombre es requerido');
+    if (!userData.nombres || userData.nombres.trim() === '') {
+      throw new Error('Nombres son requeridos');
     }
 
-    if (!userData.lastName || userData.lastName.trim() === '') {
-      throw new Error('Apellido es requerido');
+    if (!userData.contraseña || userData.contraseña.trim() === '') {
+      throw new Error('Contraseña es requerida');
     }
 
-    if (!userData.role) {
-      throw new Error('Rol de usuario es requerido');
-    }
-
-    // Validar que el rol sea válido
-    if (!Object.values(UserRole).includes(userData.role)) {
-      throw new Error(`Rol inválido: ${userData.role}`);
+    // Validar que el estado sea válido
+    if (userData.estado && !Object.values(UserStatus).includes(userData.estado)) {
+      throw new Error(`Estado inválido: ${userData.estado}`);
     }
   }
 
@@ -202,24 +193,24 @@ export class UserService {
    */
   async getUserStatistics(): Promise<{
     total: number;
-    active: number;
-    inactive: number;
-    byRole: Record<string, number>;
+    activos: number;
+    inactivos: number;
+    porEstado: Record<string, number>;
   }> {
     try {
       const allUsers = await this.getAllUsers();
-      const activeUsers = allUsers.filter(user => user.isActive);
+      const activeUsers = allUsers.filter(user => user.isActive());
       
-      const byRole = allUsers.reduce((acc, user) => {
-        acc[user.role] = (acc[user.role] || 0) + 1;
+      const porEstado = allUsers.reduce((acc, user) => {
+        acc[user.estado] = (acc[user.estado] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
       return {
         total: allUsers.length,
-        active: activeUsers.length,
-        inactive: allUsers.length - activeUsers.length,
-        byRole
+        activos: activeUsers.length,
+        inactivos: allUsers.length - activeUsers.length,
+        porEstado
       };
       
     } catch (error) {

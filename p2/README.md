@@ -11,29 +11,45 @@
 
 **CARLOS ALBERTO DELGADO CAMPUZANO**
 
-## 🏗️ Arquitectura del Sistema
+## 🏗️ Entidad Usuario 
 
-Este proyecto implementa una **arquitectura hexagonal** (puertos y adaptadores) siguiendo principios de **código limpio** y **SOLID**:
+La entidad `User` ha sido refactorizada con una estructura más simple y enfocada:
 
-### 📂 Estructura de Capas
+### � Atributos de la Entidad
 
+| Atributo | Tipo | Descripción | Validaciones |
+|----------|------|-------------|--------------|
+| **id_usuario** | `string` | Identificador único (UUID) | Generado automáticamente |
+| **nombres** | `string` | Nombres completos del usuario | Mínimo 2 caracteres |
+| **email** | `string` | Correo electrónico único | Formato válido, único en sistema |
+| **contraseña** | `string` | Contraseña del usuario | Mínimo 6 caracteres |
+| **estado** | `UserStatus` | Estado del usuario | `activo` o `inactivo` |
+
+### � Enumeración UserStatus
+
+```typescript
+export enum UserStatus {
+  ACTIVO = 'activo',
+  INACTIVO = 'inactivo'
+}
 ```
-src/
-├── domain/           # 🎯 Lógica de negocio y entidades
-│   ├── entities/     # Entidades del dominio
-│   └── interfaces/   # Contratos y abstracciones
-├── infrastructure/   # 🔧 Implementaciones técnicas
-├── application/      # 📊 Servicios de aplicación
-└── presentation/     # 🖥️ Capa de presentación
-```
 
-### 🧩 Principios Aplicados
+### 🛡️ Validaciones Implementadas
 
-- **Single Responsibility Principle (SRP)**: Cada clase tiene una responsabilidad específica
-- **Dependency Inversion Principle (DIP)**: Dependencias hacia abstracciones, no implementaciones
-- **Inyección de Dependencias**: Desacoplamiento entre capas
-- **Patrón Repository**: Abstracción del acceso a datos
-- **Domain-Driven Design**: Enfoque en el dominio del negocio
+1. **Email**: Formato válido y único en el sistema
+2. **Nombres**: Mínimo 2 caracteres, no vacío
+3. **Contraseña**: Mínimo 6 caracteres para seguridad básica
+4. **Estado**: Solo valores válidos del enum UserStatus
+
+### 🧰 Métodos Disponibles
+
+| Método | Retorno | Descripción |
+|--------|---------|-------------|
+| `getNombres()` | `string` | Obtiene los nombres del usuario |
+| `isActive()` | `boolean` | Verifica si el usuario está activo |
+| `updateWith()` | `User` | Crea nueva instancia con campos actualizados |
+| `toJSON()` | `UserData` | Serialización completa (incluye contraseña) |
+| `toSafeJSON()` | `SafeUserData` | Serialización segura (sin contraseña) |
 
 ## ⚡ Paradigmas Asíncronos Implementados
 
@@ -73,23 +89,29 @@ src/
 
 ### 📊 Datos de Prueba (11 registros)
 
-El sistema incluye **11 usuarios realistas** con diferentes roles:
+El sistema incluye **11 usuarios realistas** con la nueva estructura simplificada:
 
-| Rol | Cantidad | Ejemplos |
-|-----|----------|----------|
-| Admin | 1 | María González |
-| Entrepreneur | 4 | Carlos Martínez, Sofía López, Miguel Castro, Fernando Ortiz |
-| Investor | 3 | Ana Rodríguez, Diego Herrera, Isabella Vargas |
-| Mentor | 2 | Luis Torres, Patricia Silva |
-| User | 1 | Carmen Ruiz |
+| Usuario | Email | Estado |
+|---------|-------|--------|
+| María González Admin | maria.gonzalez@sistema.com | ✅ Activo |
+| Carlos Martínez López | carlos.martinez@empresa.com | ✅ Activo |
+| Ana Sofía Rodríguez | ana.rodriguez@negocio.com | ✅ Activo |
+| Luis Fernando Torres | luis.torres@consulta.com | ✅ Activo |
+| Sofía Elena López | sofia.lopez@startup.com | ✅ Activo |
+| Diego Alejandro Herrera | diego.herrera@inversion.com | ✅ Activo |
+| Patricia Silva Morales | patricia.silva@mentor.com | ✅ Activo |
+| Miguel Ángel Castro | miguel.castro@tech.com | ✅ Activo |
+| Carmen Beatriz Ruiz | carmen.ruiz@usuario.com | ✅ Activo |
+| Fernando José Ortiz | fernando.ortiz@empresa.com | ✅ Activo |
+| Isabella Vargas Pérez | isabella.vargas@prueba.com | ❌ Inactivo |
 
 ### 🔐 Características de los Datos
 
 - **IDs únicos**: Generados con UUID v4
 - **Emails únicos**: Validación de duplicados
-- **Validaciones**: Edad (18-120), formato email, nombres válidos
-- **Estados**: Usuarios activos e inactivos para pruebas
-- **Roles específicos**: Sistema de emprendimiento completo
+- **Contraseñas**: Todas tienen formato `nombre123456` (mínimo 6 caracteres)
+- **Estados**: 10 usuarios activos, 1 inactivo para pruebas
+- **Validaciones**: Email válido, nombres mínimo 2 caracteres
 
 ## 🛠️ Stack Tecnológico
 
@@ -149,15 +171,15 @@ npm run clean
 ```typescript
 createUser(userData: CreateUserData, callback: CreateCallback<User>): void
 ```
-- **Entrada**: Datos del usuario (sin ID)
+- **Entrada**: `{ nombres, email, contraseña, estado? }`
 - **Salida**: Callback con error o usuario creado
-- **Validaciones**: Email único, datos requeridos
+- **Validaciones**: Email único, contraseña mínimo 6 caracteres
 
 #### READ - Async/Await
 ```typescript
 async getUserById(id: string): Promise<User | null>
 async getAllUsers(): Promise<User[]>
-async getUsersByRole(role: UserRole): Promise<User[]>
+async getUsersByEstado(estado: UserStatus): Promise<User[]>
 async getActiveUsers(): Promise<User[]>
 ```
 
@@ -175,7 +197,7 @@ async deleteUser(id: string): Promise<boolean>
 ```
 - **Entrada**: ID del usuario
 - **Salida**: Boolean indicando éxito
-- **Reglas**: No eliminar administradores
+- **Reglas**: Eliminación física del usuario
 
 ### 🏪 UserRepository
 
@@ -187,9 +209,9 @@ async deleteUser(id: string): Promise<boolean>
 - `delete()` - Eliminación física
 
 #### Operaciones Específicas
-- `findByEmail()` - Búsqueda por email
-- `findByRole()` - Filtrar por rol
-- `findActiveUsers()` - Solo activos
+- `findByEmail()` - Búsqueda por email único
+- `findByEstado()` - Filtrar por estado (activo/inactivo)
+- `findActiveUsers()` - Solo usuarios activos
 
 ## 🧪 Evidencias de Funcionamiento
 

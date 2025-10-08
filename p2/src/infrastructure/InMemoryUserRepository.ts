@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { IUserRepository } from '../domain/interfaces/IUserRepository';
-import { User, UserRole, CreateUserData } from '../domain/entities/User';
+import { User, UserStatus, CreateUserData } from '../domain/entities/User';
 import { CreateCallback } from '../domain/interfaces/IRepository';
 
 /**
@@ -34,12 +34,10 @@ export class InMemoryUserRepository implements IUserRepository {
         // Crear nuevo usuario con ID único
         const newUser = new User(
           uuidv4(),
+          userData.nombres,
           userData.email,
-          userData.firstName,
-          userData.lastName,
-          userData.age,
-          userData.role,
-          userData.isActive ?? true
+          userData.contraseña,
+          userData.estado ?? UserStatus.ACTIVO
         );
 
         // Agregar a la "base de datos"
@@ -64,7 +62,7 @@ export class InMemoryUserRepository implements IUserRepository {
       // Simular operación asíncrona
       await this.simulateAsyncOperation();
       
-      const user = this.users.find(user => user.id === id);
+      const user = this.users.find(user => user.id_usuario === id);
       return user || null;
       
     } catch (error) {
@@ -98,7 +96,7 @@ export class InMemoryUserRepository implements IUserRepository {
       // Simular latencia de base de datos
       setTimeout(() => {
         try {
-          const userIndex = this.users.findIndex(user => user.id === id);
+          const userIndex = this.users.findIndex(user => user.id_usuario === id);
           
           if (userIndex === -1) {
             reject(new Error(`Usuario con ID ${id} no encontrado`));
@@ -131,7 +129,7 @@ export class InMemoryUserRepository implements IUserRepository {
       // Simular operación asíncrona
       await this.simulateAsyncOperation();
       
-      const userIndex = this.users.findIndex(user => user.id === id);
+      const userIndex = this.users.findIndex(user => user.id_usuario === id);
       
       if (userIndex === -1) {
         return false; // Usuario no encontrado
@@ -162,16 +160,16 @@ export class InMemoryUserRepository implements IUserRepository {
   }
 
   /**
-   * Buscar usuarios por rol
+   * Buscar usuarios por estado
    */
-  async findByRole(role: string): Promise<User[]> {
+  async findByEstado(estado: string): Promise<User[]> {
     try {
       await this.simulateAsyncOperation();
       
-      return this.users.filter(user => user.role === role);
+      return this.users.filter(user => user.estado === estado);
       
     } catch (error) {
-      throw new Error(`Error al buscar usuarios por rol: ${error}`);
+      throw new Error(`Error al buscar usuarios por estado: ${error}`);
     }
   }
 
@@ -182,7 +180,7 @@ export class InMemoryUserRepository implements IUserRepository {
     try {
       await this.simulateAsyncOperation();
       
-      return this.users.filter(user => user.isActive);
+      return this.users.filter(user => user.isActive());
       
     } catch (error) {
       throw new Error(`Error al buscar usuarios activos: ${error}`);
@@ -205,82 +203,70 @@ export class InMemoryUserRepository implements IUserRepository {
   private initializeTestData(): void {
     const testUsers: CreateUserData[] = [
       {
-        email: 'admin@emprendimiento.com',
-        firstName: 'María',
-        lastName: 'González',
-        age: 35,
-        role: UserRole.ADMIN
+        nombres: 'María González Admin',
+        email: 'maria.gonzalez@sistema.com',
+        contraseña: 'admin123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'carlos.martinez@startup.com',
-        firstName: 'Carlos',
-        lastName: 'Martínez',
-        age: 28,
-        role: UserRole.ENTREPRENEUR
+        nombres: 'Carlos Martínez López',
+        email: 'carlos.martinez@empresa.com',
+        contraseña: 'carlos123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'ana.rodriguez@ventures.com',
-        firstName: 'Ana',
-        lastName: 'Rodríguez',
-        age: 42,
-        role: UserRole.INVESTOR
+        nombres: 'Ana Sofía Rodríguez',
+        email: 'ana.rodriguez@negocio.com',
+        contraseña: 'ana123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'luis.torres@mentor.com',
-        firstName: 'Luis',
-        lastName: 'Torres',
-        age: 50,
-        role: UserRole.MENTOR
+        nombres: 'Luis Fernando Torres',
+        email: 'luis.torres@consulta.com',
+        contraseña: 'luis123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'sofia.lopez@innovacion.com',
-        firstName: 'Sofía',
-        lastName: 'López',
-        age: 26,
-        role: UserRole.ENTREPRENEUR
+        nombres: 'Sofía Elena López',
+        email: 'sofia.lopez@startup.com',
+        contraseña: 'sofia123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'diego.herrera@capital.com',
-        firstName: 'Diego',
-        lastName: 'Herrera',
-        age: 38,
-        role: UserRole.INVESTOR
+        nombres: 'Diego Alejandro Herrera',
+        email: 'diego.herrera@inversion.com',
+        contraseña: 'diego123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'patricia.silva@coaching.com',
-        firstName: 'Patricia',
-        lastName: 'Silva',
-        age: 45,
-        role: UserRole.MENTOR
+        nombres: 'Patricia Silva Morales',
+        email: 'patricia.silva@mentor.com',
+        contraseña: 'patricia123456',
+        estado: UserStatus.ACTIVO
       },
       {
+        nombres: 'Miguel Ángel Castro',
         email: 'miguel.castro@tech.com',
-        firstName: 'Miguel',
-        lastName: 'Castro',
-        age: 31,
-        role: UserRole.ENTREPRENEUR
+        contraseña: 'miguel123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'carmen.ruiz@user.com',
-        firstName: 'Carmen',
-        lastName: 'Ruiz',
-        age: 29,
-        role: UserRole.USER
+        nombres: 'Carmen Beatriz Ruiz',
+        email: 'carmen.ruiz@usuario.com',
+        contraseña: 'carmen123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'fernando.ortiz@business.com',
-        firstName: 'Fernando',
-        lastName: 'Ortiz',
-        age: 33,
-        role: UserRole.ENTREPRENEUR
+        nombres: 'Fernando José Ortiz',
+        email: 'fernando.ortiz@empresa.com',
+        contraseña: 'fernando123456',
+        estado: UserStatus.ACTIVO
       },
       {
-        email: 'isabella.vargas@invest.com',
-        firstName: 'Isabella',
-        lastName: 'Vargas',
-        age: 40,
-        role: UserRole.INVESTOR,
-        isActive: false // Usuario inactivo para pruebas
+        nombres: 'Isabella Vargas Pérez',
+        email: 'isabella.vargas@prueba.com',
+        contraseña: 'isabella123456',
+        estado: UserStatus.INACTIVO // Usuario inactivo para pruebas
       }
     ];
 
@@ -289,12 +275,10 @@ export class InMemoryUserRepository implements IUserRepository {
       try {
         const user = new User(
           uuidv4(),
+          userData.nombres,
           userData.email,
-          userData.firstName,
-          userData.lastName,
-          userData.age,
-          userData.role,
-          userData.isActive ?? true
+          userData.contraseña,
+          userData.estado ?? UserStatus.ACTIVO
         );
         this.users.push(user);
       } catch (error) {
