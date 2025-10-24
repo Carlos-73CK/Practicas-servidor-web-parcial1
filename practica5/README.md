@@ -1,31 +1,39 @@
-# Práctica 5 – Gateway GraphQL
+# Práctica 5 – Gateway GraphQL (NestJS)
 
-Este proyecto implementa un gateway GraphQL que consume la API REST de la Práctica 4 (NestJS + TypeORM + SQLite) en `http://localhost:3000/api/v1`.
+Gateway GraphQL que consume la API REST del Taller 4 (NestJS + TypeORM + SQLite) en `http://localhost:3000/api/v1`. Implementa 9 queries “ingeniosas” con agregaciones y filtros, usando arquitectura code‑first, Apollo Sandbox e introspection.
 
-## Ejecutar (solo Graph)
-- Node.js 20+
-- API de Práctica 4 corriendo en `http://localhost:3000/api/v1`
+## Arquitectura
 
-## Ejecutar
-```powershell
-# Práctica 5 – Gateway GraphQL
+Cliente → GraphQL Gateway (Taller 5) → API REST (Taller 4) → SQLite
 
-Gateway GraphQL (NestJS + Apollo) que consume la API REST de la Práctica 4 (NestJS + TypeORM + SQLite) en `http://localhost:3000/api/v1`.
+```
+[Cliente]
+   ↓
+[NestJS GraphQL (Apollo) 3001]
+   ↓ HTTP (HttpModule/Axios)
+[NestJS REST 3000/api/v1]
+   ↓
+[SQLite]
+```
+
+Evidencias: capturas y schema en `practica5/imagenes/` (incluye `schema.png`).
 
 ## Requisitos
 - Node.js 20+
-- Práctica 4 (REST) corriendo en `http://localhost:3000/api/v1`
+- API REST del Taller 4 corriendo en `http://localhost:3000/api/v1`
 
-## Arranque rápido
+## Instalación y ejecución
 
 1) Terminal A – Práctica 4 (REST en 3000)
+
 ```powershell
 cd "c:\Users\lenovo\Desktop\APLICACIONES_WEB\practica4"
 npm install
 npm run start
 ```
 
-2) Terminal B – Práctica 5 (Graph en 3001)
+2) Terminal B – Práctica 5 (GraphQL en 3001)
+
 ```powershell
 cd "c:\Users\lenovo\Desktop\APLICACIONES_WEB\practica5\graph"
 npm install
@@ -33,70 +41,98 @@ npm run build
 npm run start
 ```
 
-- Apollo Sandbox (GraphQL): http://localhost:3001/graphql
+Abrir Apollo Sandbox: http://localhost:3001/graphql
 
-Si ya tenías el Graph corriendo y cambiaste código:
-```powershell
-cd "c:\Users\lenovo\Desktop\APLICACIONES_WEB\practica5\graph"; npm run build; npm run start
-```
+Semillas (opcional, Taller 4):
 
-Semillas de datos (opcional):
 ```powershell
 cd "c:\Users\lenovo\Desktop\APLICACIONES_WEB\practica4"; npm run seed
 ```
 
-### Si el puerto 3001 está ocupado
+Si el puerto 3001 está ocupado:
+
 ```powershell
 netstat -ano | findstr :3001
 Stop-Process -Id <PID> -Force
 ```
-Luego vuelve a `npm run start` en `practica5/graph`.
 
-## Esquema y módulos
-- Reportes: `reporte(id)`, `reportes(filtro, paginacion)`, `dashboardReportes`, `promedioPuntuacionPorReporte`
-- Catálogos: `categorias`, `areas`, `estados`, `etiquetas`
-- Usuarios/Roles: `usuarios`, `roles`
-- Comentarios/Archivos/Puntuaciones: `comentarios(reporteId?)`, `archivosAdjuntos(reporteId?)`, `puntuaciones(reporteId?)`
+## Configuración técnica clave
+- GraphQLModule: Apollo Driver, `autoSchemaFile: src/schema.gql`, `introspection: true`, Apollo Landing Page, `sortSchema: true`.
+- CORS habilitado en `src/main.ts` para Apollo Studio y frontends locales.
+- HttpModule con `baseURL: http://localhost:3000/api/v1`.
+- Schema generado en `practica5/graph/src/schema.gql`.
 
-## Queries de Analytics (9/9) y autores
-- Carlos Delgado:
-  1) `topAreasConMasReportes(limite?)`
-  2) `tableroEtiquetas(limite?)`
-  3) `resumenUsuario(usuarioId!)`
-- Jeremy Vera:
-  4) `rankingUsuariosPorAportes(limite?, desde?, hasta?)`
-  5) `reportesPorEtiquetaConPromedio(etiquetaId!, limite?)`
-  6) `etiquetasCoocurrentes(etiquetaId!, limite?)`
-- Cinthia Zambrano:
-  7) `tendenciasComentariosPorSemana(desde?, hasta?)`
-  8) `reportesPorAreaYCategoria(areaId?, categoriaId?)`
-  9) `buscadorReportesAvanzado(filtro?, paginacion?)`
+## Módulos y queries base
+- Catálogos: `categorias`, `areas`, `estados`, `etiquetas`.
+- Usuarios/Roles: `usuarios`, `roles`.
+- Reportes: `reporte(id)`, `reportes(filtro, paginacion)`.
+- Comentarios/Archivos/Puntuaciones: `comentarios(reporteId?)`, `archivosAdjuntos(reporteId?)`, `puntuaciones(reporteId?)`.
 
-Colección para copiar/pegar en Apollo Sandbox:
-- `practica5/graph/docs/queries.graphql`
+## 9 Queries de Analytics con autores (documentadas)
 
-## Ejemplos base
-1) Reportes con filtro y paginación
+Colección ejecutable completa: `practica5/graph/docs/queries.graphql`.
+
+1) topAreasConMasReportes(limite?) — Autor: Carlos Delgado
+- Descripción: Top de áreas con más reportes; incluye promedio de puntuaciones.
+- Args: `limite: Int` (opcional).
+- Ejemplo:
 ```graphql
-query Reportes($f: FiltroReportesInput, $p: PaginacionInput) {
-  reportes(filtro: $f, paginacion: $p) {
-    total pagina limite
-    items { id titulo estado { id nombre } area { id nombre } categoria { id nombre } etiquetas { id nombre } }
-  }
-}
-```
-Variables:
-```json
-{ "f": { "texto": "alumbrado", "estadoId": 1 }, "p": { "pagina": 1, "limite": 10 } }
+query($limite:Int){ topAreasConMasReportes(limite:$limite){ area{ id nombre } totalReportes promedioPuntuacion } }
 ```
 
-2) Un reporte por id
-```graphql
-query($id: Int!) { reporte(id: $id) { id titulo descripcion usuario { id nombre } } }
-```
+2) tableroEtiquetas(limite?) — Autor: Carlos Delgado
+- Descripción: Ranking de etiquetas por usos en reportes y comentarios.
+- Args: `limite: Int` (opcional).
+
+3) resumenUsuario(usuarioId!) — Autor: Carlos Delgado
+- Descripción: Totales de reportes, comentarios y promedio de puntuación de sus reportes.
+- Args: `usuarioId: Int!`.
+
+4) rankingUsuariosPorAportes(limite?, desde?, hasta?) — Autor: Jeremy Vera
+- Descripción: Ranking por aportes (reportes+comentarios+puntuaciones) con filtro temporal.
+- Args: `limite: Int`, `desde: String`, `hasta: String` (ISO, opcionales).
+
+5) reportesPorEtiquetaConPromedio(etiquetaId!, limite?) — Autor: Jeremy Vera
+- Descripción: Reportes asociados a una etiqueta con promedio de puntuación.
+- Args: `etiquetaId: Int!`, `limite: Int`.
+
+6) etiquetasCoocurrentes(etiquetaId!, limite?) — Autor: Jeremy Vera
+- Descripción: Etiquetas que co-ocurren con la etiqueta base en reportes y comentarios.
+- Args: `etiquetaId: Int!`, `limite: Int`.
+
+7) tendenciasComentariosPorSemana(desde?, hasta?) — Autor: Cinthia Zambrano
+- Descripción: Tendencia por semana ISO (YYYY-Www) de comentarios.
+- Args: `desde: String`, `hasta: String` (ISO, opcionales).
+
+8) reportesPorAreaYCategoria(areaId?, categoriaId?) — Autor: Cinthia Zambrano
+- Descripción: Conteos agrupados por área y categoría con filtros opcionales.
+- Args: `areaId: Int`, `categoriaId: Int`.
+
+9) buscadorReportesAvanzado(filtro?, paginacion?) — Autor: Cinthia Zambrano
+- Descripción: Búsqueda avanzada por texto, etiqueta y usuario, con paginación.
+- Args: `filtro: BusquedaAvanzadaInput`, `paginacion: PaginacionInput`.
+
+## Manejo de errores
+`ServiceHttp` mapea errores del REST a excepciones GraphQL/Nest:
+- 404 → `NotFoundException` (mensaje claro y detalles).
+- 5xx → `InternalServerErrorException`.
+- Fallos de red/timeout → `BadGatewayException`.
+- Otros 4xx → `HttpException` con el status original.
+
+## Entregables
+- Código fuente: `practica5/graph` (gateway) y Taller 4 (REST) vigente.
+- Schema GraphQL generado: `practica5/graph/src/schema.gql`.
+- Colección de queries: `practica5/graph/docs/queries.graphql`.
+- Evidencias (capturas + schema): `practica5/imagenes/`.
+
+## División de trabajo y planificación
+- Carlos Delgado: 3 queries de información agregada (1–3).
+- Jeremy Vera: 3 queries de análisis/métricas (4–6).
+- Cinthia Zambrano: 3 queries de búsqueda/filtrado (7–9).
+
+Acta breve: Se acordó usar code‑first, Apollo Sandbox y `baseURL` común para REST. Se definieron tipos compartidos, se evitó duplicidad y se distribuyeron 3 queries por integrante. Se validó el schema y se capturaron evidencias en `imagenes/`.
 
 ## Notas
-- El gateway usa `HttpModule.register({ baseURL: 'http://localhost:3000/api/v1' })`.
-- Parte de los filtros se aplican en el gateway; pueden moverse al REST si se requiere.
-- Las capturas de las 9 queries y el schema generado pueden colocarse en `practica5/graph/docs/`.
-</p>
+- Parte de los filtros se resuelven en el Gateway para demostrar la capa de agregación; se podrían llevar al REST si se desea.
+- Puerto: REST 3000, GraphQL 3001 (configurable con `PORT`).
+

@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Logger, HttpException } from '@nestjs/common';
+import { Injectable, Logger, HttpException, NotFoundException, InternalServerErrorException, BadGatewayException } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { catchError, firstValueFrom } from 'rxjs';
 
@@ -16,15 +16,46 @@ export class ServiceHttp {
     const fullUrl = `${baseURL || ''}${url || ''}`;
     const data = error.response?.data;
     this.logger.error(`${error.message} code=${error.code} status=${status} ${method} ${fullUrl} body=${JSON.stringify(data)}`);
+
+    // Mapeo más claro de errores HTTP → excepciones Nest/GraphQL
+    if (status === 404) {
+      throw new NotFoundException({
+        message: 'Recurso no encontrado en el servicio REST',
+        method,
+        url: fullUrl,
+        status,
+        details: data,
+      });
+    }
+    if (typeof status === 'number' && status >= 500) {
+      throw new InternalServerErrorException({
+        message: 'Error interno del servicio REST',
+        method,
+        url: fullUrl,
+        status,
+        details: data,
+      });
+    }
+    if (typeof status !== 'number') {
+      // Sin respuesta del backend o error de red/timeouts
+      throw new BadGatewayException({
+        message: 'No hay respuesta del servicio REST (timeout/red)',
+        method,
+        url: fullUrl,
+        status: 502,
+        details: { code: error.code, data },
+      });
+    }
+    // Otros códigos (400-499 no 404)
     throw new HttpException(
       {
-        message: 'REST error',
+        message: 'Error al consumir el servicio REST',
         method,
         url: fullUrl,
         status,
         details: data,
       },
-      status ?? 502,
+      status,
     );
   }
 
